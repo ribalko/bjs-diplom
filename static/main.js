@@ -48,6 +48,7 @@ function main(){
 
 
     // я знаю, что объект market, который хранит массив курсов валют к Неткоину, описан в модуле stocks. Но как к нему обратиться я не могу понять. require выдает ошибку.
+    // console.log(market);
     
     const Ivan = new Profile({
                     username: 'invan',
@@ -63,7 +64,7 @@ function main(){
     
     ApiConnector.getStocks((err, data) => {console.log(`Getting stocks info`)});
     
-    console.log(market);
+
 
     // сначала создаем и авторизуем пользователя
     Ivan.createUser({ username: Ivan.username, name: Ivan.name, password: Ivan.password}, (err, data) => {
