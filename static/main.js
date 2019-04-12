@@ -1,9 +1,9 @@
 class Profile {
 
-    constructor(user) {
-        this.username = user.username;
-        this.name = user.name;
-        this.password = user.password;
+    constructor({ username: username, name: { firstName, lastName }, password: password}) {
+        this.username = username;
+        this.name = name;
+        this.password = password;
     }
 
     createUser({ username, name, password}, callback) {
@@ -43,86 +43,80 @@ class Profile {
 
 }
 
+function getStocks() {
+    ApiConnector.getStocks((err, data) => {console.log(`Getting stocks info`)});
+}
 
 function main(){
 
-
-    // я знаю, что объект market, который хранит массив курсов валют к Неткоину, описан в модуле stocks. Но как к нему обратиться я не могу понять. require выдает ошибку.
-    // console.log(market);
-    
     const Ivan = new Profile({
-                    username: 'invan',
+                    username: 'ivan',
                     name: { firstName: 'Ivan', lastName: 'Chernyshev' },
                     password: 'ivanspass',
                 });
 
     const Petya = new Profile({
-                    username: 'petya',
-                    name: { firstName: 'Petr', lastName: 'Sergeev' },
-                    password: 'petrspass',
+                   username: 'petya',
+                   name: { firstName: 'Petr', lastName: 'Sergeev' },
+                   password: 'petrspass',
                 });                
-    
-    ApiConnector.getStocks((err, data) => {console.log(`Getting stocks info`)});
-    
-
 
     // сначала создаем и авторизуем пользователя
-    Ivan.createUser({ username: Ivan.username, name: Ivan.name, password: Ivan.password}, (err, data) => {
+    Ivan.createUser( Ivan, (err, data) => {
         if (err) {
             console.error(`Error during creating ${Ivan.username}`);
         }
         else {
             console.log(`User ${Ivan.username} successfully created`);
+            Ivan.performLogin({ username: Ivan.username, password: Ivan.password }, (err, data) => {
+                if (err) {
+                   console.error(`Error during logging in ${Ivan.username}`);
+                    }
+                else {
+                    console.log(`User ${Ivan.username} successfully logging in`);
+
+                    // после того, как мы авторизовали пользователя, добавляем ему денег в кошелек
+                    Ivan.addMoney({ currency: 'EUR', amount: 500000 }, (err, data) => {
+                        if (err) {
+                            console.error(`Error during adding money to ${Ivan.username}`);
+                        }
+                        else {
+                            console.log(`Added 500000 euros to ${Ivan.username}`);
+                            // переведем Евро в Неткоины
+                            getStocks();
+                            
+                            Ivan.convertMoney({ fromCurrency: 'EUR', targetCurrency: 'Неткоин', targetAmount: 500000 }, (err, data) => {
+                                if (err) {
+                                    console.error(`Error converting money from EUR to Неткоин`);
+                                }
+                                else {
+                                    console.log(`Successfully converted 500000 EUR to Неткоин`);
+                                    // создаем второго пользователя
+                                    Petya.createUser( Petya, (err, data) => {
+                                        if (err) {
+                                            console.error(`Error during creating ${Petya.username}`);
+                                        }
+                                        else {
+                                            console.log(`User ${Petya.username} successfully created`);
+                                            // переведеи Неткоины Пете
+                                            Ivan.transferMoney({ to: Petya.username, amount: 500000 }, (err, data) => {
+                                                if (err) {
+                                                    console.error(`Error during transfer money to ${Petya.username}`);
+                                                }
+                                                else {
+                                                    console.log(`Successfully transfered 500000 euros to ${Petya.username}`);
+                                                }
+                                            });            
+                                        }
+                                    });    
+                                }
+                            });                
+                        }
+                    });                    
+                }
+            });        
         }
     });
-
-    Ivan.performLogin({ username: Ivan.username, password: Ivan.password }, (err, data) => {
-        if (err) {
-           console.error(`Error during logging in ${Ivan.username}`);
-            }
-        else {
-            console.log(`User ${Ivan.username} successfully logging in`);
-        }
-    });
-    
-
-    // создаем второго пользователя
-    Petya.createUser({ username: Petya.username, name: Petya.name, password: Petya.password}, (err, data) => {
-        if (err) {
-            console.error(`Error during creating ${Petya.username}`);
-        }
-        else {
-            console.log(`User ${Petya.username} successfully created`);
-        }
-    });    
-
-    // после того, как мы авторизовали пользователя, добавляем ему денег в кошелек
-    Ivan.addMoney({ currency: 'EUR', amount: 500000 }, (err, data) => {
-        if (err) {
-            console.error(`Error during adding money to ${Ivan.username}`);
-            } else {
-                console.log(`Added 500000 euros to ${Ivan.username}`);
-        }
-    });
-
-    // переведем Евро в Неткоины
-    Ivan.convertMoney({ fromCurrency: 'EUR', targetCurrency: 'Неткоин', targetAmount: 500000 }, (err, data) => {
-        if (err) {
-            console.error(`Error converting money from EUR to Неткоин`);
-            } else {
-                console.log(`Successfully converted 500000 EUR to Неткоин`);
-        }
-    });
-
-    // переведеи Неткоины Пете
-    Ivan.transferMoney({ to: Petya.username, amount: 500000 }, (err, data) => {
-        if (err) {
-            console.error(`Error during transfer money to ${Petya.username}`);
-            } else {
-                console.log(`Successfully transfered 500000 euros to ${Petya.username}`);
-        }
-    });
-
 }
 
 main();
