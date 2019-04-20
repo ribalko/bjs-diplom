@@ -1,21 +1,35 @@
 class Profile {
 
-    constructor({ username: username, name: { firstName, lastName }, password: password}) {
+    constructor({ username, name: { firstName, lastName }, password}) {
         this.username = username;
-        this.name = name;
+        this.name = {
+            firstName,
+            lastName
+          };
         this.password = password;
     }
 
-    createUser({ username, name, password}, callback) {
-        return ApiConnector.createUser({ username, name, password }, (err, data) => {
-            console.log(`Creating user ${username}`);
+    createUser(callback) {
+        return ApiConnector.createUser(
+            {
+              username: this.username,
+              name: this.name,
+              password: this.password
+            },
+            (err, data) => {
+            console.log(`Creating user ${this.username}`);
             callback(err, data);
         });
     }
 
-    performLogin({ username, password }, callback) {
-        return ApiConnector.performLogin({ username, password }, (err, data) => {
-            console.log(`Logging in user ${username}`);
+    performLogin(callback) {
+        return ApiConnector.performLogin(
+            {
+                username: this.username,
+                password: this.password
+            },
+            (err, data) => {
+            console.log(`Logging in user ${this.username}`);
             callback(err, data);
         });        
     }    
@@ -35,7 +49,7 @@ class Profile {
     }
 
     convertMoney({ fromCurrency, targetCurrency, targetAmount }, callback) {
-        return ApiConnector.transferMoney({ fromCurrency, targetCurrency, targetAmount }, (err, data) => {
+        return ApiConnector.convertMoney({ fromCurrency, targetCurrency, targetAmount }, (err, data) => {
             console.log(`Successfully converting ${targetAmount} from ${fromCurrency} to ${targetCurrency}`);
             callback(err, data);
         });        
@@ -43,8 +57,11 @@ class Profile {
 
 }
 
-function getStocks() {
-    ApiConnector.getStocks((err, data) => {console.log(`Getting stocks info`)});
+function getStocks(callback) {
+    return ApiConnector.getStocks((err, data) => {
+        console.log(`Getting stocks info`);
+        callback(err, data);
+    });
 }
 
 function main(){
@@ -59,63 +76,73 @@ function main(){
                    username: 'petya',
                    name: { firstName: 'Petr', lastName: 'Sergeev' },
                    password: 'petrspass',
-                });                
+                });      
+                
+    const startCapital = { currency: 'EUR', amount: 500000 };
 
-    // сначала создаем и авторизуем пользователя
-    Ivan.createUser( Ivan, (err, data) => {
+    getStocks((err, data) => {
         if (err) {
-            console.error(`Error during creating ${Ivan.username}`);
+            console.error('Error during getting stocks');
         }
-        else {
-            console.log(`User ${Ivan.username} successfully created`);
-            Ivan.performLogin({ username: Ivan.username, password: Ivan.password }, (err, data) => {
-                if (err) {
-                   console.error(`Error during logging in ${Ivan.username}`);
+        // записываем текущее значение курсов валют
+        const stocksInfo = data[0];        
+        
+        // сначала создаем и авторизуем пользователя
+        Ivan.createUser( (err, data) => {
+            if (err) {
+                console.error(`Error during creating ${Ivan.username}`);
+            }
+            else {
+                console.log(`User ${Ivan.username} successfully created`);
+                Ivan.performLogin( (err, data) => {
+                    if (err) {
+                        console.error(`Error during logging in ${Ivan.username}`);
                     }
-                else {
-                    console.log(`User ${Ivan.username} successfully logging in`);
+                    else {
+                        console.log(`User ${Ivan.username} successfully logging in`);
+    
+                        // после того, как мы авторизовали пользователя, добавляем ему денег в кошелек
+                        Ivan.addMoney(startCapital, (err, data) => {
+                            if (err) {
+                                console.error(`Error during adding money to ${Ivan.username}`);
+                            }
+                            else {
+                                console.log(`Added ${startCapital.amount} ${startCapital.currency} to ${Ivan.username}`);
 
-                    // после того, как мы авторизовали пользователя, добавляем ему денег в кошелек
-                    Ivan.addMoney({ currency: 'EUR', amount: 500000 }, (err, data) => {
-                        if (err) {
-                            console.error(`Error during adding money to ${Ivan.username}`);
-                        }
-                        else {
-                            console.log(`Added 500000 euros to ${Ivan.username}`);
-                            // переведем Евро в Неткоины
-                            getStocks();
-                            
-                            Ivan.convertMoney({ fromCurrency: 'EUR', targetCurrency: 'Неткоин', targetAmount: 500000 }, (err, data) => {
-                                if (err) {
-                                    console.error(`Error converting money from EUR to Неткоин`);
-                                }
-                                else {
-                                    console.log(`Successfully converted 500000 EUR to Неткоин`);
-                                    // создаем второго пользователя
-                                    Petya.createUser( Petya, (err, data) => {
-                                        if (err) {
-                                            console.error(`Error during creating ${Petya.username}`);
-                                        }
-                                        else {
-                                            console.log(`User ${Petya.username} successfully created`);
-                                            // переведеи Неткоины Пете
-                                            Ivan.transferMoney({ to: Petya.username, amount: 500000 }, (err, data) => {
-                                                if (err) {
-                                                    console.error(`Error during transfer money to ${Petya.username}`);
-                                                }
-                                                else {
-                                                    console.log(`Successfully transfered 500000 euros to ${Petya.username}`);
-                                                }
-                                            });            
-                                        }
-                                    });    
-                                }
-                            });                
-                        }
-                    });                    
-                }
-            });        
-        }
+                                // переведем Евро в Неткоины  
+                                const targetAmount = stocksInfo['EUR_NETCOIN'] * startCapital.amount;                                                        
+                                Ivan.convertMoney({ fromCurrency: startCapital.currency, targetCurrency: 'NETCOIN', targetAmount: targetAmount }, (err, data) => {
+                                    if (err) {
+                                        console.error(`Error converting money from  ${startCapital.currency} to NETCOIN`);
+                                    }
+                                    else {
+                                        console.log(`Successfully converted ${startCapital.amount} ${startCapital.currency} to ${targetAmount} NETCOIN`);
+                                        // создаем второго пользователя
+                                        Petya.createUser( (err, data) => {
+                                            if (err) {
+                                                console.error(`Error during creating ${Petya.username}`);
+                                            }
+                                            else {
+                                                console.log(`User ${Petya.username} successfully created`);
+                                                // переведеи Неткоины Пете
+                                                Ivan.transferMoney({ to: Petya.username, amount: targetAmount }, (err, data) => {
+                                                    if (err) {
+                                                        console.error(`Error during transfer money to ${Petya.username}`);
+                                                    }
+                                                    else {
+                                                        console.log(`Successfully transfered ${targetAmount} netcoins to ${Petya.username}`);
+                                                    }
+                                                });            
+                                            }
+                                        });    
+                                    }
+                                });                
+                            }
+                        });                    
+                    }
+                });        
+            }
+        });
     });
 }
 
